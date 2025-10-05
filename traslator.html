@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Offline English → Language Translator with Transliteration</title>
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --accent:#06b6d4; --muted:#94a3b8;
+      color-scheme: dark;
+    }
+    *{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+    body{margin:0;padding:28px;background:linear-gradient(180deg,#071023 0%, #071b2a 100%);color:#e6eef6;}
+    .container{max-width:900px;margin:0 auto;}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:18px;}
+    h1{margin:0;font-size:20px;}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01)); padding:18px;border-radius:12px; box-shadow: 0 6px 18px rgba(2,6,23,0.6); }
+    textarea{width:100%;min-height:120px;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;resize:vertical}
+    .row{display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap}
+    select{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    button{background:var(--accent);border:none;padding:10px 14px;border-radius:8px;color:#052025;font-weight:600;cursor:pointer}
+    .output{white-space:pre-wrap;padding:12px;border-radius:8px;border:1px dashed rgba(255,255,255,0.04);min-height:88px;margin-top:12px;background:linear-gradient(180deg, rgba(2,6,23,0.4), rgba(2,6,23,0.2))}
+    .meta{color:var(--muted);font-size:13px;margin-top:8px}
+    .unknown{color:#ffd166;font-weight:700}
+    .small{font-size:13px;color:var(--muted)}
+    .footer{margin-top:18px;color:var(--muted);font-size:13px}
+    .translit{color:#06b6d4;font-style:italic;margin-top:4px;font-size:14px;}
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="card" style="padding:12px;">
+      <h1>Offline English → Language Translator</h1>
+    </div>
+  </header>
+
+  <div class="card">
+    <label for="source">Input (English):</label>
+    <textarea id="source" placeholder="Type English text here...">Hello! How are you? I want to buy a ticket to Mumbai tomorrow.</textarea>
+
+    <div class="row">
+      <label for="lang">Translate to:</label>
+      <select id="lang">
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="hi">Hindi</option>
+        <option value="ar">Arabic</option>
+        <option value="te">Telugu</option>
+      </select>
+
+      <button id="translateBtn">Translate</button>
+      <button id="clearBtn" style="background:#334155;color:#e6eef6">Clear</button>
+    </div>
+
+    <div class="meta">Click "Translate" to convert English → chosen language. Unknown words are highlighted. Transliteration shown below translation.</div>
+
+    <div>
+      <label>Translation Output:</label>
+      <div id="output" class="output"></div>
+    </div>
+
+    <div class="footer">Tip: Multi-word phrases work better (e.g., "how are you").</div>
+  </div>
+
+  <div style="height:12px"></div>
+
+  <div class="card">
+    <div class="small">Examples (press Translate):</div>
+    <ul class="small">
+      <li><code>Hello! How are you?</code></li>
+      <li><code>I want to buy a ticket to Mumbai tomorrow.</code></li>
+      <li><code>Good morning — please show me the menu.</code></li>
+      <li><code>Where is the bathroom?</code></li>
+      <li><code>How much does this cost?</code></li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const dictionary = {
+  es: {
+    "hello": {t:"hola", tr:"hola"}, "how are you": {t:"¿cómo estás?", tr:"como estas"},
+    "good morning": {t:"buenos días", tr:"buenos dias"}, "please": {t:"por favor", tr:"por favor"},
+    "thank you": {t:"gracias", tr:"gracias"}, "good night": {t:"buenas noches", tr:"buenas noches"},
+    "i want": {t:"quiero", tr:"quiero"}, "i want to buy": {t:"quiero comprar", tr:"quiero comprar"},
+    "ticket": {t:"boleto", tr:"boleto"}, "to": {t:"a", tr:"a"}, "tomorrow": {t:"mañana", tr:"manana"},
+    "mumbai": {t:"mumbai", tr:"mumbai"}, "show me": {t:"muéstrame", tr:"muestrame"}, "the menu": {t:"el menú", tr:"el menu"},
+    "yes": {t:"sí", tr:"si"}, "no": {t:"no", tr:"no"}, "where is": {t:"dónde está", tr:"donde esta"},
+    "bathroom": {t:"baño", tr:"bano"}, "how much": {t:"¿cuánto cuesta?", tr:"cuanto cuesta"},
+    "food": {t:"comida", tr:"comida"}, "water": {t:"agua", tr:"agua"}, "train": {t:"tren", tr:"tren"},
+    "bus": {t:"autobús", tr:"autobus"}, "friend": {t:"amigo", tr:"amigo"}, "love": {t:"amor", tr:"amor"}
+  },
+  fr: {
+    "hello": {t:"bonjour", tr:"bonjour"}, "how are you": {t:"comment ça va", tr:"comment ca va"},
+    "good morning": {t:"bonjour", tr:"bonjour"}, "please": {t:"s'il vous plaît", tr:"s'il vous plait"},
+    "thank you": {t:"merci", tr:"merci"}, "good night": {t:"bonne nuit", tr:"bonne nuit"},
+    "i want": {t:"je veux", tr:"je veux"}, "i want to buy": {t:"je veux acheter", tr:"je veux acheter"},
+    "ticket": {t:"billet", tr:"billet"}, "to": {t:"à", tr:"a"}, "tomorrow": {t:"demain", tr:"demain"},
+    "mumbai": {t:"mumbai", tr:"mumbai"}, "show me": {t:"montre-moi", tr:"montre-moi"}, "the menu": {t:"le menu", tr:"le menu"},
+    "yes": {t:"oui", tr:"oui"}, "no": {t:"non", tr:"non"}, "where is": {t:"où est", tr:"ou est"},
+    "bathroom": {t:"toilettes", tr:"toilettes"}, "how much": {t:"combien ça coûte", tr:"combien ca coute"},
+    "food": {t:"nourriture", tr:"nourriture"}, "water": {t:"eau", tr:"eau"}, "train": {t:"train", tr:"train"},
+    "bus": {t:"bus", tr:"bus"}, "friend": {t:"ami", tr:"ami"}, "love": {t:"amour", tr:"amour"}
+  },
+  hi: {
+    "hello": {t:"नमस्ते", tr:"namaste"}, "how are you": {t:"कैसे हैं आप", tr:"kaise hain aap"},
+    "good morning": {t:"सुप्रभात", tr:"suprabhat"}, "please": {t:"कृपया", tr:"kripya"},
+    "thank you": {t:"धन्यवाद", tr:"dhanyavaad"}, "good night": {t:"शुभ रात्रि", tr:"shubh ratri"},
+    "i want": {t:"मैं चाहता हूँ", tr:"main chahta hoon"}, "i want to buy": {t:"मैं खरीदना चाहता हूँ", tr:"main kharidna chahta hoon"},
+    "ticket": {t:"टिकट", tr:"ticket"}, "to": {t:"को", tr:"ko"}, "tomorrow": {t:"कल", tr:"kal"},
+    "mumbai": {t:"मुंबई", tr:"mumbai"}, "show me": {t:"मुझे दिखाओ", tr:"mujhe dikhao"}, "the menu": {t:"मेनू", tr:"menu"},
+    "yes": {t:"हाँ", tr:"haan"}, "no": {t:"नहीं", tr:"nahin"}, "where is": {t:"कहाँ है", tr:"kahaan hai"},
+    "bathroom": {t:"बाथरूम", tr:"bathroom"}, "how much": {t:"कितना है", tr:"kitna hai"},
+    "food": {t:"भोजन", tr:"bhojan"}, "water": {t:"पानी", tr:"paani"}, "train": {t:"ट्रेन", tr:"train"},
+    "bus": {t:"बस", tr:"bus"}, "friend": {t:"दोस्त", tr:"dost"}, "love": {t:"प्यार", tr:"pyaar"}
+  },
+  ar: {
+    "hello": {t:"مرحبا", tr:"marhaba"}, "how are you": {t:"كيف حالك", tr:"kayfa haluk"},
+    "good morning": {t:"صباح الخير", tr:"sabah alkhayr"}, "please": {t:"من فضلك", tr:"min fadlak"},
+    "thank you": {t:"شكراً", tr:"shukran"}, "good night": {t:"تصبح على خير", tr:"tusbeh ala khayr"},
+    "i want": {t:"أريد", tr:"ureed"}, "i want to buy": {t:"أريد أن أشتري", tr:"ureed an ashtari"},
+    "ticket": {t:"تذكرة", tr:"tathkara"}, "to": {t:"إلى", tr:"ila"}, "tomorrow": {t:"غداً", tr:"ghadan"},
+    "mumbai": {t:"مومباي", tr:"Mumbai"}, "show me": {t:"أرني", tr:"arni"}, "the menu": {t:"القائمة", tr:"alqayima"},
+    "yes": {t:"نعم", tr:"na'am"}, "no": {t:"لا", tr:"la"}, "where is": {t:"أين", tr:"ayn"},
+    "bathroom": {t:"الحمام", tr:"alhammam"}, "how much": {t:"كم الثمن", tr:"kam althaman"},
+    "food": {t:"طعام", tr:"ta'am"}, "water": {t:"ماء", tr:"maa"}, "train": {t:"قطار", tr:"qitar"},
+    "bus": {t:"حافلة", tr:"hafila"}, "friend": {t:"صديق", tr:"sadiq"}, "love": {t:"حب", tr:"hubb"}
+  },
+  te: {
+    "hello": {t:"హలో", tr:"halo"}, "how are you": {t:"మీరు ఎలా ఉన్నారు", tr:"meeru ela unnaru"},
+    "good morning": {t:"శుభోదయం", tr:"shubhodayam"}, "please": {t:"దయచేసి", tr:"dayachesi"},
+    "thank you": {t:"ధన్యవాదాలు", tr:"dhanyavadalu"}, "good night": {t:"శుభ రాత్రి", tr:"shubh raatri"},
+    "i want": {t:"నేనిస్తుంది", tr:"nenistundi"}, "i want to buy": {t:"నేను కొనుగోలు చేయాలనుకుంటున్నాను", tr:"nenu konugolu cheyalanukuntunnanu"},
+    "ticket": {t:"టికెట్", tr:"ticket"}, "to": {t:"కు", tr:"ku"}, "tomorrow": {t:"రేపు", tr:"repu"},
+    "mumbai": {t:"ముంబై", tr:"Mumbai"}, "show me": {t:"నాకు చూపి", tr:"naaku choopi"}, "the menu": {t:"మెను", tr:"menu"},
+    "yes": {t:"అవును", tr:"avunu"}, "no": {t:"కాదు", tr:"kaadu"}, "where is": {t:"ఎక్కడ ఉంది", tr:"ekkada undi"},
+    "bathroom": {t:"బాత్‌రూం", tr:"bathroom"}, "how much": {t:"ఎన్ని రూపాయలు", tr:"enni roopayalu"},
+    "food": {t:"ఆహారం", tr:"aaharam"}, "water": {t:"నీరు", tr:"neeru"}, "train": {t:"రైలు", tr:"railu"},
+    "bus": {t:"బస్", tr:"bus"}, "friend": {t:"స్నేహితుడు", tr:"snehitudu"}, "love": {t:"ప్రేమ", tr:"prema"}
+  }
+};
+
+// Utility functions
+function norm(s){ return s.replace(/\s+/g,' ').trim().toLowerCase(); }
+function escapeHtml(s){ return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function applyCapitalization(sourceToken, targetText){
+  if(!sourceToken) return targetText;
+  if(sourceToken === sourceToken.toUpperCase()) return targetText.toUpperCase();
+  if(sourceToken[0] && sourceToken[0] === sourceToken[0].toUpperCase()){
+    return targetText.charAt(0).toUpperCase() + targetText.slice(1);
+  }
+  return targetText;
+}
+
+function translateText(input, targetLang){
+  if(!dictionary[targetLang]) return {text:"(target language not supported)", translit:"", unknown:[]};
+  const langDict = dictionary[targetLang];
+  const phrases = Object.keys(langDict).sort((a,b)=> b.length - a.length);
+  const tokens = [];
+  const regex = /[\w']+|[.,!?;—-]+|["“”'()]/g;
+  let match;
+  while((match = regex.exec(input)) !== null){ tokens.push({raw: match[0], index: match.index}); }
+  const texts = tokens.map(t => t.raw);
+  const lc = texts.map(t => t.toLowerCase());
+  const outputTokens = new Array(texts.length).fill(null);
+  const translitTokens = new Array(texts.length).fill(null);
+  const unknownSet = new Set();
+
+  for(let i=0;i<texts.length;i++){
+    if(outputTokens[i] !== null) continue;
+    let matched=false;
+    for(const phrase of phrases){
+      const phraseWords = phrase.split(' ');
+      let j=0,k=i;
+      while(j<phraseWords.length && k<texts.length){
+        const tk = texts[k];
+        if(/^[\p{P}\-—]+$/u.test(tk)){ k++; continue; }
+        if(norm(tk)===phraseWords[j]){ j++; k++; } else break;
+      }
+      if(j===phraseWords.length){
+        let orig="";
+        for(let p=i;p<k;p++){ orig += texts[p] + (p<k-1 ? ' ' : ''); }
+        outputTokens[i]= {text: langDict[phrase].t, original: orig};
+        translitTokens[i]= langDict[phrase].tr;
+        for(let p=i+1;p<k;p++){ outputTokens[p]={text:'', consumed:true}; translitTokens[p]=''; }
+        matched=true; break;
+      }
+    }
+    if(!matched){
+      const token=texts[i];
+      if(/^[\p{P}\-—]+$/u.test(token)){ outputTokens[i]={text:token}; translitTokens[i]=token; }
+      else{
+        const wordKey=norm(token);
+        if(langDict[wordKey]){ outputTokens[i]={text:applyCapitalization(token,langDict[wordKey].t)};
+          translitTokens[i]=langDict[wordKey].tr;
+        } else { outputTokens[i]={text:token, unknown:true}; translitTokens[i]=token; unknownSet.add(token.replace(/[.,!?;:]+$/,'')); }
+      }
+    }
+  }
+  const final = outputTokens.map(t=>t.text).join(' ');
+  const translit = translitTokens.map(t=>t).join(' ');
+  return {text: final, translit: translit, unknown: Array.from(unknownSet)};
+}
+
+// UI wiring
+const sourceEl=document.getElementById('source');
+const langEl=document.getElementById('lang');
+const outputEl=document.getElementById('output');
+document.getElementById('translateBtn').addEventListener('click',doTranslate);
+document.getElementById('clearBtn').addEventListener('click',()=>{sourceEl.value=''; outputEl.innerHTML='';});
+sourceEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); doTranslate(); }});
+
+function doTranslate(){
+  const text=sourceEl.value.trim();
+  const lang=langEl.value;
+  if(!text){ outputEl.innerHTML='(no input)'; return; }
+  const res=translateText(text, lang);
+  let outHtml=escapeHtml(res.text);
+  if(res.unknown && res.unknown.length){
+    res.unknown.forEach(u=>{ if(!u) return;
+      const re=new RegExp('\\b'+escapeRegExp(u)+'\\b','gi');
+      outHtml=outHtml.replace(re, match=>`<span class="unknown">${match}</span>`);
+    });
+  }
+  outHtml+=`<div class="translit">[${res.translit}]</div>`;
+  outputEl.innerHTML=outHtml;
+}
+
+// initial translate
+doTranslate();
+</script>
+</body>
+</html>
